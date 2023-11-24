@@ -179,7 +179,7 @@ func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, erro
 	for _, p := range results {
 
 		// コメントの詳細を取得する
-		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
+		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at`"
 		var comments []Comment
 		err := db.Select(&comments, query, p.ID)
 		if err != nil {
@@ -386,6 +386,7 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 
 	results := []Post{}
 
+	// TODO: 1
 	err := db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` ORDER BY `created_at` DESC")
 	if err != nil {
 		log.Print(err)
@@ -435,7 +436,6 @@ func getAccountName(w http.ResponseWriter, r *http.Request) {
 	results := []Post{}
 
 	// アカウントが投稿したやつを持ってくる
-	// TODO: 1
 	err = db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `user_id` = ? ORDER BY `created_at` DESC", user.ID)
 	if err != nil {
 		log.Print(err)
@@ -449,7 +449,7 @@ func getAccountName(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: 2
-	// アカウントがコメント数を確認
+	// アカウントのコメント数を確認
 	commentCount := 0
 	err = db.Get(&commentCount, "SELECT COUNT(*) AS count FROM `comments` WHERE `user_id` = ?", user.ID)
 	if err != nil {
