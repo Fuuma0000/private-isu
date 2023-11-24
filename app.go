@@ -171,15 +171,19 @@ func getFlash(w http.ResponseWriter, r *http.Request, key string) string {
 	}
 }
 
+// TODO: makePost
 func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, error) {
 	var posts []Post
 
+	// TODO: N+1になってる
 	for _, p := range results {
+		// コメント数を確認する
 		err := db.Get(&p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)
 		if err != nil {
 			return nil, err
 		}
 
+		// コメントの詳細を取得する
 		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
 		if !allComments {
 			query += " LIMIT 3"
@@ -190,6 +194,7 @@ func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, erro
 			return nil, err
 		}
 
+		// 誰が投稿したか確認する
 		for i := 0; i < len(comments); i++ {
 			err := db.Get(&comments[i].User, "SELECT * FROM `users` WHERE `id` = ?", comments[i].UserID)
 			if err != nil {
@@ -415,10 +420,12 @@ func getIndex(w http.ResponseWriter, r *http.Request) {
 	}{posts, me, getCSRFToken(r), getFlash(w, r, "notice")})
 }
 
+// アカウント情報を取得する
 func getAccountName(w http.ResponseWriter, r *http.Request) {
 	accountName := chi.URLParam(r, "accountName")
 	user := User{}
 
+	// アカウントがあるか確認
 	err := db.Get(&user, "SELECT * FROM `users` WHERE `account_name` = ? AND `del_flg` = 0", accountName)
 	if err != nil {
 		log.Print(err)
@@ -432,6 +439,8 @@ func getAccountName(w http.ResponseWriter, r *http.Request) {
 
 	results := []Post{}
 
+	// アカウントが投稿したやつを持ってくる
+	// TODO: 1
 	err = db.Select(&results, "SELECT `id`, `user_id`, `body`, `mime`, `created_at` FROM `posts` WHERE `user_id` = ? ORDER BY `created_at` DESC", user.ID)
 	if err != nil {
 		log.Print(err)
@@ -444,6 +453,8 @@ func getAccountName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: 2
+	// アカウントがコメント数を確認
 	commentCount := 0
 	err = db.Get(&commentCount, "SELECT COUNT(*) AS count FROM `comments` WHERE `user_id` = ?", user.ID)
 	if err != nil {
@@ -451,6 +462,7 @@ func getAccountName(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// アカウントが投稿した投稿idを持ってくる
 	postIDs := []int{}
 	err = db.Select(&postIDs, "SELECT `id` FROM `posts` WHERE `user_id` = ?", user.ID)
 	if err != nil {
@@ -603,6 +615,7 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 画像があるか確認
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		session := getSession(r)
@@ -613,6 +626,7 @@ func postIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 画像の種類を確認する
 	mime := ""
 	if file != nil {
 		// 投稿のContent-Typeからファイルのタイプを決定する
