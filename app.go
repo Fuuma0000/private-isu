@@ -177,21 +177,21 @@ func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, erro
 
 	// TODO: N+1になってる
 	for _, p := range results {
-		// コメント数を確認する
-		err := db.Get(&p.CommentCount, "SELECT COUNT(*) AS `count` FROM `comments` WHERE `post_id` = ?", p.ID)
+
+		// コメントの詳細を取得する
+		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
+		var comments []Comment
+		err := db.Select(&comments, query, p.ID)
 		if err != nil {
 			return nil, err
 		}
 
-		// コメントの詳細を取得する
-		query := "SELECT * FROM `comments` WHERE `post_id` = ? ORDER BY `created_at` DESC"
+		p.CommentCount = len(comments)
+
 		if !allComments {
-			query += " LIMIT 3"
-		}
-		var comments []Comment
-		err = db.Select(&comments, query, p.ID)
-		if err != nil {
-			return nil, err
+			if len(comments) > 3 {
+				p.Comments = comments[len(comments)-3:]
+			}
 		}
 
 		// 誰が投稿したか確認する
@@ -200,11 +200,6 @@ func makePosts(results []Post, csrfToken string, allComments bool) ([]Post, erro
 			if err != nil {
 				return nil, err
 			}
-		}
-
-		// reverse
-		for i, j := 0, len(comments)-1; i < j; i, j = i+1, j-1 {
-			comments[i], comments[j] = comments[j], comments[i]
 		}
 
 		p.Comments = comments
